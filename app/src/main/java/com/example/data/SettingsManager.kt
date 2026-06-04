@@ -120,12 +120,72 @@ class SettingsManager(context: Context) {
         }
     }
 
+    suspend fun syncSubscriptionsAndContent(): Result<Unit> = withContext(Dispatchers.IO) {
+        val config = _backendConfig.value
+        val email = _userProfile.value.email
+        val remoteUrl = config.remoteConfigUrl
+        
+        if (config.isRemoteConfigEnabled && !remoteUrl.isNullOrBlank()) {
+            // 1. Sync configuration and movies/series/episodes content
+            try {
+                syncRemoteConfig(remoteUrl)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            
+            // 2. Query subscription status from server
+            if (!email.isNullOrBlank()) {
+                val checkUrlStr = if (remoteUrl.contains("action=")) {
+                    val base = remoteUrl.substringBefore("action=")
+                    val paramsAfter = remoteUrl.substringAfter("action=").substringAfter("&", "")
+                    val ending = if (paramsAfter.isNotEmpty()) "&$paramsAfter" else ""
+                    "${base}action=verify_subscription&email=${android.net.Uri.encode(email)}$ending"
+                } else {
+                    val delim = if (remoteUrl.contains("?")) "&" else "?"
+                    "${remoteUrl}${delim}action=verify_subscription&email=${android.net.Uri.encode(email)}"
+                }
+                
+                var connection: HttpURLConnection? = null
+                try {
+                    val url = URL(checkUrlStr)
+                    connection = url.openConnection() as HttpURLConnection
+                    connection.requestMethod = "GET"
+                    connection.connectTimeout = 8000
+                    connection.readTimeout = 8000
+                    connection.inputStream.use { input ->
+                        val jsonString = input.bufferedReader().use { it.readText() }
+                        val responseAdapter = moshi.adapter(VerifySubscriptionResponse::class.java)
+                        val response = responseAdapter.fromJson(jsonString)
+                        if (response != null && response.success) {
+                            // Update local user profile state safely based on the secure server evaluation
+                            val currentProfile = _userProfile.value
+                            val updatedProfile = currentProfile.copy(
+                                isPremium = response.isPremium,
+                                activePlanId = response.activePlanId,
+                                planExpiryDate = response.planExpiryDate
+                            )
+                            withContext(Dispatchers.Main) {
+                                saveUserProfile(updatedProfile)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    connection?.disconnect()
+                }
+            }
+        }
+        Result.success(Unit)
+    }
+
+
     private fun loadUserProfile(): UserProfile {
         val json = prefs.getString("user_profile", null)
         return if (json != null) {
-            profileAdapter.fromJson(json) ?: UserProfile("Hendra Drayan", "hendradrayan9@gmail.com", false, null, null)
+            profileAdapter.fromJson(json) ?: UserProfile("", "hendradrayan9@gmail.com", false, null, null, isRegistered = false)
         } else {
-            UserProfile("Hendra Drayan", "hendradrayan9@gmail.com", false, null, null)
+            UserProfile("", "hendradrayan9@gmail.com", false, null, null, isRegistered = false)
         }
     }
 
@@ -209,7 +269,7 @@ class SettingsManager(context: Context) {
     fun resetToDefaults() {
         prefs.edit().clear().apply()
         _backendConfig.value = BackendConfig()
-        _userProfile.value = UserProfile("Hendra Drayan", "hendradrayan9@gmail.com", false, null, null)
+        _userProfile.value = UserProfile("", "hendradrayan9@gmail.com", false, null, null, isRegistered = false)
         val initial = getInitialMovies()
         _movies.value = initial
         prefs.edit().putString("movies", movieListAdapter.toJson(initial)).apply()

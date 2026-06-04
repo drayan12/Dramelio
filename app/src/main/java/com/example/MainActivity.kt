@@ -47,10 +47,17 @@ class MainActivity : ComponentActivity() {
 
             val primaryColor = config.appThemePrimaryHex.toColor(Color(0xFFE50914))
 
-            // Automatic internet sync on app launch if remote API config is enabled
-            LaunchedEffect(Unit) {
+            // Periodic background sync loop (every 12 seconds) to keep content & subscription status up-to-date securely
+            LaunchedEffect(config.isRemoteConfigEnabled, config.remoteConfigUrl, userProfile.email) {
                 if (config.isRemoteConfigEnabled && config.remoteConfigUrl.isNotBlank()) {
-                    settingsManager.syncRemoteConfig(config.remoteConfigUrl)
+                    while (true) {
+                        try {
+                            settingsManager.syncSubscriptionsAndContent()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                        kotlinx.coroutines.delay(12000L)
+                    }
                 }
             }
 
@@ -135,8 +142,28 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.padding(innerPadding)) {
                         NavHost(
                             navController = navController,
-                            startDestination = "home"
+                            startDestination = if (userProfile.isRegistered) "home" else "register"
                         ) {
+                            composable("register") {
+                                RegisterScreen(
+                                    currentEmail = userProfile.email,
+                                    config = config,
+                                    onRegisterSuccess = { name, email ->
+                                        settingsManager.saveUserProfile(
+                                            userProfile.copy(
+                                                name = name,
+                                                email = email,
+                                                isRegistered = true
+                                            )
+                                        )
+                                        navController.navigate("home") {
+                                            popUpTo("register") { inclusive = true }
+                                        }
+                                    },
+                                    primaryColor = primaryColor
+                                )
+                            }
+
                             composable("home") {
                                 HomeScreen(
                                     movies = movies,
@@ -205,7 +232,7 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToCheckout = { navController.navigate("checkout") },
                                     onResetData = {
                                         settingsManager.resetToDefaults()
-                                        navController.navigate("home") {
+                                        navController.navigate("register") {
                                             popUpTo(0) { inclusive = true }
                                         }
                                     },

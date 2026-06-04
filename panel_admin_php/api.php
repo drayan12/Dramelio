@@ -132,7 +132,7 @@ switch ($action) {
         
         if ($err) {
             // If TriPay API fails or is offline, generate simulated transaction so the client doesn't block!
-            $simulated = get_simulated_transaction($merchant_ref, $plan_id, $amount, $payment_method);
+            $simulated = get_simulated_transaction($merchant_ref, $plan_id, $amount, $payment_method, $customer_name, $customer_email);
             echo json_encode([
                 "success" => true,
                 "is_simulated" => true,
@@ -160,7 +160,9 @@ switch ($action) {
                     : "Silakan meluncur ke petunjuk pembayaran resmi TriPay.",
                 "vaNumber" => isset($tripay_data['pay_code']) ? $tripay_data['pay_code'] : null,
                 "qrCodeUrl" => isset($tripay_data['qr_url']) ? $tripay_data['qr_url'] : null,
-                "date" => date("Y-m-d H:i:s")
+                "date" => date("Y-m-d H:i:s"),
+                "email" => $customer_email,
+                "name" => $customer_name
             ];
             
             // Log local pending transaction
@@ -176,7 +178,7 @@ switch ($action) {
         } else {
             // TriPay returned an API error (e.g., bad signature or key). Fallback to high-quality system simulation
             $msg = isset($res_data['message']) ? $res_data['message'] : 'Respon gagal dari TriPay API';
-            $simulated = get_simulated_transaction($merchant_ref, $plan_id, $amount, $payment_method);
+            $simulated = get_simulated_transaction($merchant_ref, $plan_id, $amount, $payment_method, $customer_name, $customer_email);
             
             echo json_encode([
                 "success" => true,
@@ -215,6 +217,59 @@ switch ($action) {
         ]);
         break;
 
+    case 'verify_subscription':
+        $email = isset($_GET['email']) ? trim($_GET['email']) : '';
+        if (empty($email)) {
+            http_response_code(400);
+            echo json_encode(["success" => false, "message" => "Parameter email dibutuhkan"]);
+            exit();
+        }
+        
+        $transactions = get_transactions($tx_file);
+        $isPremium = false;
+        $activePlanId = null;
+        $planExpiryDate = null;
+        
+        // Find the latest PAID transaction for this email
+        foreach ($transactions as $tx) {
+            $tx_email = isset($tx['email']) ? trim($tx['email']) : '';
+            $tx_status = isset($tx['status']) ? $tx['status'] : '';
+            if (strcasecmp($tx_email, $email) === 0 && $tx_status === 'PAID') {
+                $tx_date = $tx['date']; // Y-m-d H:i:s
+                $tx_time = strtotime($tx_date);
+                // Subscription is active for 30 days
+                $expiry_time = $tx_time + (30 * 24 * 60 * 60);
+                if (time() < $expiry_time) {
+                    $isPremium = true;
+                    $activePlanId = isset($tx['planId']) ? $tx['planId'] : 'premium';
+                    
+                    // Format output expiry date "dd MMMM yyyy"
+                    $months_id = [
+                        'January' => 'Januari', 'February' => 'Februari', 'March' => 'Maret',
+                        'April' => 'April', 'May' => 'Mei', 'June' => 'Juni',
+                        'July' => 'Juli', 'August' => 'Agustus', 'September' => 'September',
+                        'October' => 'Oktober', 'November' => 'November', 'December' => 'Desember'
+                    ];
+                    $english_month = date("F", $expiry_time);
+                    if (isset($months_id[$english_month])) {
+                        $planExpiryDate = date("d ", $expiry_time) . $months_id[$english_month] . date(" Y", $expiry_time);
+                    } else {
+                        $planExpiryDate = date("d F Y", $expiry_time);
+                    }
+                    break; // transactions are list in descending order, first match is latest
+                }
+            }
+        }
+        
+        echo json_encode([
+            "success" => true,
+            "email" => $email,
+            "isPremium" => $isPremium,
+            "activePlanId" => $activePlanId,
+            "planExpiryDate" => $planExpiryDate
+        ], JSON_UNESCAPED_UNICODE);
+        break;
+
     default:
         http_response_code(404);
         echo json_encode(["success" => false, "message" => "Action tidak dikenal"]);
@@ -222,7 +277,7 @@ switch ($action) {
 }
 
 // Helper to construct fallback mock local payments
-function get_simulated_transaction($ref, $plan_id, $amount, $payment_method) {
+function get_simulated_transaction($ref, $plan_id, $amount, $payment_method, $customer_name = 'Pelanggan Dramelio', $customer_email = 'pelanggan@dramelio.com') {
     global $tx_file;
     $vaNum = null;
     $qrUrl = null;
@@ -244,7 +299,9 @@ function get_simulated_transaction($ref, $plan_id, $amount, $payment_method) {
         "paymentInstructions" => "Ini adalah invoice simulasi karena TriPay API server dalam mode demo/offline. Silakan klik tombol 'SAYA SUDAH BAYAR' di aplikasi Android untuk langsung memicu simulasi sukses pembayaran gratis.",
         "vaNumber" => $vaNum,
         "qrCodeUrl" => $qrUrl,
-        "date" => date("Y-m-d H:i:s")
+        "date" => date("Y-m-d H:i:s"),
+        "email" => $customer_email,
+        "name" => $customer_name
     ];
     
     // Log local simulated transaction

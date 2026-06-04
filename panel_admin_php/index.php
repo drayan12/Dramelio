@@ -753,6 +753,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'settings';
                             <tr>
                                 <th class="px-6 py-4">Tanggal / Waktu</th>
                                 <th class="px-6 py-4">Referensi Invoice</th>
+                                <th class="px-6 py-4">Pelanggan</th>
                                 <th class="px-6 py-4">Paket Akses</th>
                                 <th class="px-6 py-4">Total Amount</th>
                                 <th class="px-6 py-4">Metode Bayar</th>
@@ -764,7 +765,7 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'settings';
                         <tbody class="divide-y divide-neutral-800 bg-neutral-900/20 font-medium">
                             <?php if (empty($transactions)): ?>
                                 <tr>
-                                    <td colspan="8" class="text-center py-12 text-neutral-550 italic bg-neutral-950/20">
+                                    <td colspan="9" class="text-center py-12 text-neutral-550 italic bg-neutral-950/20">
                                         <i class="fas fa-receipt text-3xl mb-2 block text-neutral-500"></i> Belum ada log transaksi masuk dari aplikasi klien.
                                     </td>
                                 </tr>
@@ -774,6 +775,10 @@ $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'settings';
                                         <td class="px-6 py-4 text-neutral-400 font-semibold whitespace-nowrap"><?php echo htmlspecialchars($tx['date']); ?></td>
                                         <td class="px-6 py-4 font-mono text-white font-bold whitespace-nowrap">
                                             <span class="bg-neutral-950 border border-neutral-800 px-2 py-1 rounded"><?php echo htmlspecialchars(isset($tx['reference']) ? $tx['reference'] : $tx['merchant_ref']); ?></span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="text-white font-bold block"><?php echo htmlspecialchars(isset($tx['name']) ? $tx['name'] : 'Pelanggan Dramelio'); ?></span>
+                                            <span class="text-[10px] text-yellow-500 block font-mono"><?php echo htmlspecialchars(isset($tx['email']) ? $tx['email'] : 'pelanggan@dramelio.com'); ?></span>
                                         </td>
                                         <td class="px-6 py-4 uppercase">
                                             <span class="px-2 py-0.5 rounded font-bold text-[10px] <?php echo $tx['planId'] === 'premium' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' : 'bg-neutral-700/30 text-neutral-300'; ?>">

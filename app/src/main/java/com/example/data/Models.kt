@@ -62,7 +62,8 @@ data class UserProfile(
     val isPremium: Boolean,
     val activePlanId: String?,
     val planExpiryDate: String?,
-    val avatarUrl: String = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"
+    val avatarUrl: String = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+    val isRegistered: Boolean = false
 )
 
 enum class PaymentMethodType {
@@ -131,4 +132,14 @@ data class RemoteControlResponse(
     val config: BackendConfig,
     val movies: List<MovieOrSeries>? = null
 )
+
+@JsonClass(generateAdapter = true)
+data class VerifySubscriptionResponse(
+    val success: Boolean,
+    val email: String,
+    val isPremium: Boolean,
+    val activePlanId: String?,
+    val planExpiryDate: String?
+)
+
 
