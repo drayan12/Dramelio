@@ -22,12 +22,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.style.TextAlign
 import coil.compose.AsyncImage
 import com.example.data.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private var isSessionAuthenticated by mutableStateOf(false)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -280,7 +287,7 @@ fun BackendConfigScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Panel Kontrol Backend", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text(if (isSessionAuthenticated) "Panel Kontrol Backend" else "Dramelio Admin Gate", color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Kembali", tint = Color.White)
@@ -290,7 +297,186 @@ fun BackendConfigScreen(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        if (!isSessionAuthenticated) {
+            var adminEmail by remember { mutableStateOf("") }
+            var adminPassword by remember { mutableStateOf("") }
+            var adminPin by remember { mutableStateOf("") }
+            var passwordVisible by remember { mutableStateOf(false) }
+            var pinVisible by remember { mutableStateOf(false) }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF050505)) // Sophisticated Dark
+                    .padding(innerPadding)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = "Security Shield",
+                        tint = Color(0xFFEAB308),
+                        modifier = Modifier
+                            .size(72.dp)
+                            .padding(bottom = 12.dp)
+                    )
+
+                    Text(
+                        text = "GERBANG KEAMANAN",
+                        color = Color.White,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp,
+                        letterSpacing = 2.sp
+                    )
+
+                    Text(
+                        text = "Akses terbatas untuk Administrator Berwenang. Silakan masukkan kredensial Dramelio Anda untuk mengelola konten dan setting API.",
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 16.sp,
+                        modifier = Modifier.padding(top = 6.dp, bottom = 20.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = adminEmail,
+                        onValueChange = { adminEmail = it },
+                        label = { Text("Email Admin") },
+                        placeholder = { Text("hendradrayan@tutamail.com") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .testTag("admin_email_input"),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFEAB308),
+                            unfocusedBorderColor = Color.DarkGray,
+                            focusedLabelColor = Color(0xFFEAB308),
+                            unfocusedLabelColor = Color.Gray,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Color(0xFFEAB308)
+                        ),
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Email, contentDescription = null, tint = Color.Gray)
+                        }
+                    )
+
+                    OutlinedTextField(
+                        value = adminPassword,
+                        onValueChange = { adminPassword = it },
+                        label = { Text("Password Admin") },
+                        singleLine = true,
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .testTag("admin_password_input"),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFEAB308),
+                            unfocusedBorderColor = Color.DarkGray,
+                            focusedLabelColor = Color(0xFFEAB308),
+                            unfocusedLabelColor = Color.Gray,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Color(0xFFEAB308)
+                        ),
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = Color.Gray)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = "Lihat Password",
+                                    tint = Color.Gray
+                                )
+                            }
+                        }
+                    )
+
+                    OutlinedTextField(
+                        value = adminPin,
+                        onValueChange = { if (it.length <= 6) adminPin = it },
+                        label = { Text("6-Digit PIN Akses") },
+                        singleLine = true,
+                        visualTransformation = if (pinVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 20.dp)
+                            .testTag("admin_pin_input"),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFEAB308),
+                            unfocusedBorderColor = Color.DarkGray,
+                            focusedLabelColor = Color(0xFFEAB308),
+                            unfocusedLabelColor = Color.Gray,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Color(0xFFEAB308)
+                        ),
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Key, contentDescription = null, tint = Color.Gray)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { pinVisible = !pinVisible }) {
+                                Icon(
+                                    imageVector = if (pinVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = "Lihat PIN",
+                                    tint = Color.Gray
+                                )
+                            }
+                        }
+                    )
+
+                    Button(
+                        onClick = {
+                            if (adminEmail.trim() == "hendradrayan@tutamail.com" &&
+                                adminPassword == "Mate40pro" &&
+                                adminPin == "121298"
+                            ) {
+                                isSessionAuthenticated = true
+                                Toast.makeText(context, "Akses Otoritas Diterima!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Kredensial Otoritas Salah!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("admin_submit"),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEAB308), contentColor = Color.Black),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(text = "VERIFIKASI OTORITAS", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("admin_back"),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.LightGray),
+                        border = BorderStroke(1.dp, Color.Gray),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(text = "BATAL & KEMBALI", fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                    }
+                }
+            }
+        } else {
+            LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
@@ -564,6 +750,7 @@ fun BackendConfigScreen(
                     }
                 }
             }
+        }
         }
     }
 }

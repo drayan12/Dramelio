@@ -1,7 +1,9 @@
 package com.example.data
 
 import androidx.compose.ui.graphics.Color
+import com.squareup.moshi.JsonClass
 
+@JsonClass(generateAdapter = true)
 data class MovieOrSeries(
     val id: String,
     val title: String,
@@ -19,12 +21,14 @@ data class MovieOrSeries(
     val quality: String = "Ultra HD"
 )
 
+@JsonClass(generateAdapter = true)
 data class Season(
     val id: Int,
     val name: String,
     val episodes: List<Episode>
 )
 
+@JsonClass(generateAdapter = true)
 data class Episode(
     val id: String,
     val episodeNumber: Int,
@@ -35,11 +39,13 @@ data class Episode(
     val videoUrl: String
 )
 
+@JsonClass(generateAdapter = true)
 data class VideoSource(
     val label: String, // 1080p, 720p, 480p, 360p, Auto
     val url: String
 )
 
+@JsonClass(generateAdapter = true)
 data class SubscriptionPlan(
     val id: String,
     val name: String,
@@ -49,6 +55,7 @@ data class SubscriptionPlan(
     val benefits: List<String>
 )
 
+@JsonClass(generateAdapter = true)
 data class UserProfile(
     val name: String,
     val email: String,
@@ -62,6 +69,7 @@ enum class PaymentMethodType {
     VIRTUAL_ACCOUNT, QRIS, EWALLET, RETAIL
 }
 
+@JsonClass(generateAdapter = true)
 data class PaymentMethod(
     val code: String,
     val name: String,
@@ -70,6 +78,7 @@ data class PaymentMethod(
     val instructions: List<String>
 )
 
+@JsonClass(generateAdapter = true)
 data class PaymentTransaction(
     val id: String,
     val reference: String,
@@ -84,6 +93,7 @@ data class PaymentTransaction(
 )
 
 // Admin/Backend configuration synced dynamically
+@JsonClass(generateAdapter = true)
 data class BackendConfig(
     val domain: String = "dramelio.com",
     val tripayApiKey: String = "DEV-MOCK-TRIPAY-KEY-12345",
