@@ -32,6 +32,7 @@ import java.util.Locale
 fun ProfileScreen(
     userProfile: UserProfile,
     transactions: List<PaymentTransaction>,
+    config: BackendConfig,
     onSaveProfile: (String, String) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToCheckout: () -> Unit,
@@ -311,6 +312,72 @@ fun ProfileScreen(
             }
 
             Spacer(modifier = Modifier.height(28.dp))
+
+            // -------------------------------------------------------------
+            // Remote-Controlled Support / Help desk section
+            // -------------------------------------------------------------
+            if (config.isSupportActive) {
+                val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF13110C)),
+                    border = BorderStroke(1.dp, Color(0xFFEAB308).copy(alpha = 0.3f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 14.dp)
+                        .testTag("help_support_card")
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Chat,
+                                contentDescription = "Bantuan",
+                                tint = Color(0xFFEAB308),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Layanan Bantuan Dramelio",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Mengalami kendala saat aktivasi VIP atau butuh bantuan lainnya? Administrator kami siap melayani Anda secara langsung.",
+                            color = Color.LightGray,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                try {
+                                    uriHandler.openUri(config.supportUrl)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Membuka link bantuan...", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF25D366), // Whatsapp green
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.SupportAgent,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("HUBUNGI ADMIN VIA WHATSAPP", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+            }
 
             // Play Console Review Compliances & Privacy policy items
             Card(

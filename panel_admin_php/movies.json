@@ -1,0 +1,96 @@
+[
+  {
+    "id": "layangan_putus",
+    "title": "Layangan Putus",
+    "overview": "Kisah pilu rumah tangga Kinan yang diuji oleh kehadiran orang ketiga, membawa konflik emosional mendalam tentang kesetiaan, kejujuran, dan kehancuran harapan perkawinan.",
+    "posterUrl": "https://images.tmdb.org/t/p/w500/vRMAqYg6R4D5f9C0E2D4V9G4p7c.jpg",
+    "backdropUrl": "https://images.tmdb.org/t/p/original/6vovbO6M2Iq7L4K3K9z0VqA68iT.jpg",
+    "rating": 8.5,
+    "releaseDate": "2021-11-26",
+    "isSeries": true,
+    "genres": [
+      "Drama",
+      "Romantis"
+    ],
+    "seasons": [
+      {
+        "id": 1,
+        "name": "Season 1",
+        "episodes": [
+          {
+            "id": "lp_s1_e1",
+            "episodeNumber": 1,
+            "title": "Awal dari Keretakan",
+            "duration": "42m",
+            "thumbnail": "https://images.tmdb.org/t/p/w500/6vovbO6M2Iq7L4K3K9z0VqA68iT.jpg",
+            "overview": "Kinan mulai merasakan adanya perubahan mencurigakan pada sikap Aris yang tidak lagi sehangat biasanya.",
+            "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+          },
+          {
+            "id": "lp_s1_e2",
+            "episodeNumber": 2,
+            "title": "Teka-teki Nama Lydia",
+            "duration": "45m",
+            "thumbnail": "https://images.tmdb.org/t/p/w500/vRMAqYg6R4D5f9C0E2D4V9G4p7c.jpg",
+            "overview": "Satu persatu bukti mutlak mulai bermunculan tentang hubungan gelap antara Aris dan Lydia di belakang Kinan.",
+            "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+          }
+        ]
+      }
+    ],
+    "videoSources": [
+      {
+        "label": "1080p Ultra HD",
+        "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+      },
+      {
+        "label": "720p HD",
+        "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+      }
+    ],
+    "ageRating": "17+",
+    "duration": "1 Season",
+    "quality": "Ultra HD"
+  },
+  {
+    "id": "gadis_kretek",
+    "title": "Gadis Kretek",
+    "overview": "Kisah pencarian cinta legendaris berlatar industri rokok kretek tradisional Indonesia abad ke-20, mengungkap rahasia keluarga besar dan ramuan saus kretek terbaik.",
+    "posterUrl": "https://images.tmdb.org/t/p/w500/409CIdk60E2Zt5E3z0qfCNoUvve.jpg",
+    "backdropUrl": "https://images.tmdb.org/t/p/original/m99F2Hk26U44kL396g1JvIeJ7mF.jpg",
+    "rating": 8.9,
+    "releaseDate": "2023-11-02",
+    "isSeries": true,
+    "genres": [
+      "Drama",
+      "Sejarah",
+      "Romantis"
+    ],
+    "seasons": [
+      {
+        "id": 1,
+        "name": "Season 1",
+        "episodes": [
+          {
+            "id": "gk_s1_e1",
+            "episodeNumber": 1,
+            "title": "Aroma Cinta Masa Lalu",
+            "duration": "58m",
+            "thumbnail": "https://images.tmdb.org/t/p/w500/m99F2Hk26U44kL396g1JvIeJ7mF.jpg",
+            "overview": "Pertemuan awal yang murni antara Dasiyah, sang peracik saus kretek berbakat, dengan Soeraja yang penuh mimpi.",
+            "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+          }
+        ]
+      }
+    ],
+    "videoSources": [
+      {
+        "label": "Auto Quality",
+        "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+      }
+    ],
+    "ageRating": "13+",
+    "duration": "5 Episode",
+    "quality": "HDR 10+"
+  }
+]

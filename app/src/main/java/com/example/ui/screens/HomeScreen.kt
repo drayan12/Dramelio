@@ -29,10 +29,10 @@ import com.example.data.UserProfile
 fun HomeScreen(
     movies: List<MovieOrSeries>,
     userProfile: UserProfile,
+    config: com.example.data.BackendConfig,
     onSelectMovie: (MovieOrSeries) -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToCheckout: () -> Unit,
-    onNavigateToBackend: () -> Unit,
     primaryColor: Color
 ) {
     // Premium Netflix + iQIYI hybrid visual look
@@ -96,33 +96,64 @@ fun HomeScreen(
                     }
                 }
 
-                // Header Navigation Trigger Settings & Admin Panel
+                // Header Profile Trigger
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = onNavigateToBackend,
-                        modifier = Modifier.testTag("admin_panel_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SettingsSuggest,
-                            contentDescription = "Backend Settings",
-                            tint = Color.White
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
                     Box(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
                             .border(1.5.dp, if (userProfile.isPremium) Color(0xFFEAB308) else Color.Gray, CircleShape)
-                            .clickable { onNavigateToProfile }
+                            .clickable { onNavigateToProfile() }
                     ) {
                         AsyncImage(
                             model = userProfile.avatarUrl,
                             contentDescription = "User Avatar",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+            }
+        }
+
+        // Dynamics Remote Cloud Announcement Banner
+        if (config.isAnnouncementActive) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF1C1911) // Warm custom amber card
+                ),
+                border = BorderStroke(1.dp, Color(0xFFEAB308).copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .testTag("remote_announcement_banner")
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Campaign,
+                        contentDescription = "Pengumuman",
+                        tint = Color(0xFFEAB308),
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = config.announcementTitle,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            letterSpacing = 0.5.sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = config.announcementContent,
+                            color = Color.LightGray,
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp
                         )
                     }
                 }

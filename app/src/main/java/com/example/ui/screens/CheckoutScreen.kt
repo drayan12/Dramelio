@@ -38,7 +38,14 @@ fun CheckoutScreen(
     primaryColor: Color
 ) {
     val context = LocalContext.current
-    val systemMethods = TripayService.getPaymentMethods()
+    val systemMethods = TripayService.getPaymentMethods().filter { method ->
+        when (method.type) {
+            PaymentMethodType.QRIS -> config.isQrisActive
+            PaymentMethodType.VIRTUAL_ACCOUNT -> config.isVaActive
+            PaymentMethodType.EWALLET -> config.isEwalletActive
+            PaymentMethodType.RETAIL -> config.isRetailActive
+        }
+    }
 
     val monthlyPlan = SubscriptionPlan(
         id = "basic",
@@ -69,7 +76,7 @@ fun CheckoutScreen(
     )
 
     var selectedPlan by remember { mutableStateOf(monthlyPlan) }
-    var selectedPaymentCode by remember { mutableStateOf(systemMethods.first().code) }
+    var selectedPaymentCode by remember(systemMethods) { mutableStateOf(systemMethods.firstOrNull()?.code ?: "") }
     var pendingTransaction by remember { mutableStateOf<PaymentTransaction?>(null) }
     var showCheckoutDialog by remember { mutableStateOf(false) }
 
@@ -222,77 +229,108 @@ fun CheckoutScreen(
             )
 
             // Render Indonesian Payment Channels in visual groupings
-            val groupedMethods = systemMethods.groupBy { it.type }
-            
-            groupedMethods.entries.forEach { entry ->
-                val typeName = when(entry.key) {
-                    PaymentMethodType.VIRTUAL_ACCOUNT -> "Virtual Account (VA Bank)"
-                    PaymentMethodType.EWALLET -> "E-Wallet (Bayar Instan)"
-                    PaymentMethodType.RETAIL -> "Retail Outlet (Minimarket)"
-                    PaymentMethodType.QRIS -> "QRIS (GPN All Payment)"
-                }
-
-                Text(
-                    text = typeName,
-                    color = Color.Gray,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp)
-                )
-
-                entry.value.forEach { method ->
-                    val isSelected = selectedPaymentCode == method.code
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isSelected) Color(0xFF2B2B2B) else Color(0xFF1E1E1E))
-                            .border(
-                                width = if (isSelected) 1.dp else 0.dp,
-                                color = if (isSelected) primaryColor else Color.Transparent,
-                                shape = RoundedCornerShape(6.dp)
-                            )
-                            .clickable { selectedPaymentCode = method.code }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            if (systemMethods.isEmpty()) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1010)),
+                    border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Radio selector visual representation
-                        RadioButton(
-                            selected = isSelected,
-                            onClick = { selectedPaymentCode = method.code },
-                            colors = RadioButtonDefaults.colors(selectedColor = primaryColor, unselectedColor = Color.Gray),
-                            modifier = Modifier.size(24.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        // Method icon / representation placeholder
-                        Box(
-                            modifier = Modifier
-                                .size(width = 54.dp, height = 24.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(Color.White)
-                                .padding(horizontal = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = method.code.replace("VA", ""),
-                                color = Color.Black,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
+                        Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = Color.Red, modifier = Modifier.size(36.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = method.name,
+                            text = "Metode Pembayaran Dinonaktifkan",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Maaf, seluruh loket pembayaran saat ini dinonaktifkan sementara oleh Administrator dari server virtual kami. Silakan hubungi Layanan Pelanggan di halaman Profil jika butuh bantuan lebih lanjut.",
+                            color = Color.LightGray,
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 15.sp
+                        )
+                    }
+                }
+            } else {
+                val groupedMethods = systemMethods.groupBy { it.type }
+                
+                groupedMethods.entries.forEach { entry ->
+                    val typeName = when(entry.key) {
+                        PaymentMethodType.VIRTUAL_ACCOUNT -> "Virtual Account (VA Bank)"
+                        PaymentMethodType.EWALLET -> "E-Wallet (Bayar Instan)"
+                        PaymentMethodType.RETAIL -> "Retail Outlet (Minimarket)"
+                        PaymentMethodType.QRIS -> "QRIS (GPN All Payment)"
+                    }
+
+                    Text(
+                        text = typeName,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp)
+                    )
+
+                    entry.value.forEach { method ->
+                        val isSelected = selectedPaymentCode == method.code
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isSelected) Color(0xFF2B2B2B) else Color(0xFF1E1E1E))
+                                .border(
+                                    width = if (isSelected) 1.dp else 0.dp,
+                                    color = if (isSelected) primaryColor else Color.Transparent,
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                                .clickable { selectedPaymentCode = method.code }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Radio selector visual representation
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { selectedPaymentCode = method.code },
+                                colors = RadioButtonDefaults.colors(selectedColor = primaryColor, unselectedColor = Color.Gray),
+                                modifier = Modifier.size(24.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Method icon / representation placeholder
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 54.dp, height = 24.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Color.White)
+                                    .padding(horizontal = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = method.code.replace("VA", ""),
+                                    color = Color.Black,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Text(
+                                text = method.name,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
                 }
             }
@@ -301,6 +339,7 @@ fun CheckoutScreen(
 
             // Main CTA submit transaction payment
             Button(
+                enabled = systemMethods.isNotEmpty() && selectedPaymentCode.isNotBlank(),
                 onClick = {
                     val newTx = TripayService.executeTripayTransaction(
                         plan = selectedPlan,
@@ -332,7 +371,7 @@ fun CheckoutScreen(
     // Modal Tripay bottom-sheet invoice showing
     if (showCheckoutDialog) {
         pendingTransaction?.let { tx ->
-            val methodDetail = systemMethods.find { it.code == tx.paymentMethodCode } ?: systemMethods.first()
+            val methodDetail = systemMethods.find { it.code == tx.paymentMethodCode } ?: systemMethods.firstOrNull() ?: TripayService.getPaymentMethods().first()
             TripayCheckoutSheet(
                 transaction = tx,
                 paymentMethod = methodDetail,

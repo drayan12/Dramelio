@@ -12,6 +12,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
 
 class SettingsManager(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("dramelio_prefs", Context.MODE_PRIVATE)
@@ -59,6 +64,60 @@ class SettingsManager(context: Context) {
     fun saveBackendConfig(config: BackendConfig) {
         prefs.edit().putString("backend_config", configAdapter.toJson(config)).apply()
         _backendConfig.value = config
+    }
+
+    suspend fun syncRemoteConfig(urlStr: String): Result<BackendConfig> = withContext(Dispatchers.IO) {
+        var connection: HttpURLConnection? = null
+        try {
+            val url = URL(urlStr)
+            connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 8000
+            connection.readTimeout = 8000
+            connection.inputStream.use { input ->
+                val jsonString = input.bufferedReader().use { it.readText() }
+                
+                // Try parsing as the full RemoteControlResponse wrapper first
+                val responseAdapter = moshi.adapter(RemoteControlResponse::class.java)
+                var fetchedConfig: BackendConfig? = null
+                var fetchedMovies: List<MovieOrSeries>? = null
+                
+                try {
+                    val wrapper = responseAdapter.fromJson(jsonString)
+                    if (wrapper != null) {
+                        fetchedConfig = wrapper.config
+                        fetchedMovies = wrapper.movies
+                    }
+                } catch (e: Exception) {
+                    // Fallback to direct BackendConfig parsing if they uploaded just the config file
+                    val directAdapter = moshi.adapter(BackendConfig::class.java)
+                    fetchedConfig = directAdapter.fromJson(jsonString)
+                }
+                
+                if (fetchedConfig != null) {
+                    val merged = fetchedConfig.copy(
+                        remoteConfigUrl = urlStr,
+                        isRemoteConfigEnabled = true
+                    )
+                    saveBackendConfig(merged)
+                    
+                    // If movies are retrieved from PHP API, save them locally for daily content update!
+                    if (fetchedMovies != null && fetchedMovies.isNotEmpty()) {
+                        prefs.edit().putString("movies", movieListAdapter.toJson(fetchedMovies)).apply()
+                        _movies.value = fetchedMovies
+                    }
+                    
+                    Result.success(merged)
+                } else {
+                    Result.failure(Exception("Gagal mengurai format JSON dari server remote"))
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        } finally {
+            connection?.disconnect()
+        }
     }
 
     private fun loadUserProfile(): UserProfile {

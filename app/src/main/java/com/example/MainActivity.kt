@@ -47,6 +47,13 @@ class MainActivity : ComponentActivity() {
 
             val primaryColor = config.appThemePrimaryHex.toColor(Color(0xFFE50914))
 
+            // Automatic internet sync on app launch if remote API config is enabled
+            LaunchedEffect(Unit) {
+                if (config.isRemoteConfigEnabled && config.remoteConfigUrl.isNotBlank()) {
+                    settingsManager.syncRemoteConfig(config.remoteConfigUrl)
+                }
+            }
+
             DramelioTheme(config = config) {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -55,8 +62,8 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        // Display bottom bar only on primary structural roots (home, checkout, profile, backend)
-                        if (currentRoute == "home" || currentRoute == "checkout" || currentRoute == "profile" || currentRoute == "backend") {
+                        // Display bottom bar only on primary structural roots (home, checkout, profile)
+                        if (currentRoute == "home" || currentRoute == "checkout" || currentRoute == "profile") {
                             NavigationBar(
                                 containerColor = Color(0xFF161616),
                                 contentColor = Color.White,
@@ -121,26 +128,6 @@ class MainActivity : ComponentActivity() {
                                         unselectedTextColor = Color.Gray
                                     )
                                 )
-
-                                NavigationBarItem(
-                                    selected = currentRoute == "backend",
-                                    onClick = {
-                                        if (currentRoute != "backend") {
-                                            navController.navigate("backend") {
-                                                popUpTo("home")
-                                            }
-                                        }
-                                    },
-                                    icon = { Icon(imageVector = Icons.Default.SettingsSuggest, contentDescription = "Panel") },
-                                    label = { Text("Backend", fontSize = 10.sp) },
-                                    colors = NavigationBarItemDefaults.colors(
-                                        selectedIconColor = Color.White,
-                                        selectedTextColor = Color.White,
-                                        indicatorColor = primaryColor,
-                                        unselectedIconColor = Color.Gray,
-                                        unselectedTextColor = Color.Gray
-                                    )
-                                )
                             }
                         }
                     }
@@ -154,12 +141,12 @@ class MainActivity : ComponentActivity() {
                                 HomeScreen(
                                     movies = movies,
                                     userProfile = userProfile,
+                                    config = config,
                                     onSelectMovie = { movie ->
                                         navController.navigate("detail/${movie.id}")
                                     },
                                     onNavigateToProfile = { navController.navigate("profile") },
                                     onNavigateToCheckout = { navController.navigate("checkout") },
-                                    onNavigateToBackend = { navController.navigate("backend") },
                                     primaryColor = primaryColor
                                 )
                             }
@@ -208,6 +195,7 @@ class MainActivity : ComponentActivity() {
                                 ProfileScreen(
                                     userProfile = userProfile,
                                     transactions = transactions,
+                                    config = config,
                                     onSaveProfile = { name, email ->
                                         settingsManager.saveUserProfile(
                                             userProfile.copy(name = name, email = email)
@@ -222,23 +210,6 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     primaryColor = primaryColor
-                                )
-                            }
-
-                            composable("backend") {
-                                BackendConfigScreen(
-                                    currentConfig = config,
-                                    activeMovies = movies,
-                                    onSaveConfig = { newConfig ->
-                                        settingsManager.saveBackendConfig(newConfig)
-                                    },
-                                    onImportSeries = { movie ->
-                                        settingsManager.addImportedSeries(movie)
-                                    },
-                                    onDeleteMovie = { movieId ->
-                                        settingsManager.deleteMovie(movieId)
-                                    },
-                                    onNavigateBack = { navController.navigate("home") }
                                 )
                             }
                         }

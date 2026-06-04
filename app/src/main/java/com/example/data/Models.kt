@@ -104,5 +104,31 @@ data class BackendConfig(
     val subscriptionPremiumPrice: Long = 59000,
     val appThemePrimaryHex: String = "#EAB308", // Dramelio Gold default
     val appThemeBgHex: String = "#050505", // Sophisticated Dark default
-    val appThemeAccentHex: String = "#FACC15" // Accent Gold default
+    val appThemeAccentHex: String = "#FACC15", // Accent Gold default
+
+    // Remote Cloud Control API parameters
+    val remoteConfigUrl: String = "",
+    val isRemoteConfigEnabled: Boolean = false,
+    
+    // Remote controlled Announcement Banner
+    val announcementTitle: String = "PENGUMUMAN RESMI",
+    val announcementContent: String = "Nikmati nonton Layangan Putus dan Gadis Kretek eksklusif VIP tanpa buffering dengan Dramelio Gold HD!",
+    val isAnnouncementActive: Boolean = true,
+    
+    // Remote controlled Help Center / Support
+    val supportUrl: String = "https://wa.me/6281212121298", // Direct Whatsapp support link
+    val isSupportActive: Boolean = true,
+    
+    // Remote controlled active payment channel channels
+    val isQrisActive: Boolean = true,
+    val isVaActive: Boolean = true,
+    val isEwalletActive: Boolean = true,
+    val isRetailActive: Boolean = true
 )
+
+@JsonClass(generateAdapter = true)
+data class RemoteControlResponse(
+    val config: BackendConfig,
+    val movies: List<MovieOrSeries>? = null
+)
+
