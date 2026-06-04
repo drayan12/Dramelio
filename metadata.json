@@ -1,0 +1,6 @@
+{
+  "name": "Dramelio",
+  "description": "Premium Indonesian streaming app with customizable themes, subscription and TMDB sync, and Tripay payment gateway integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
