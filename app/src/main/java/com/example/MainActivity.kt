@@ -47,6 +47,23 @@ class MainActivity : ComponentActivity() {
 
             val primaryColor = config.appThemePrimaryHex.toColor(Color(0xFFE50914))
 
+            // Sync persistent Firebase Auth session on application launch
+            LaunchedEffect(Unit) {
+                val firebaseUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                if (firebaseUser != null) {
+                    val currentProfile = settingsManager.userProfile.value
+                    if (!currentProfile.isRegistered || currentProfile.email != firebaseUser.email) {
+                        settingsManager.saveUserProfile(
+                            currentProfile.copy(
+                                name = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: "Pengguna",
+                                email = firebaseUser.email ?: "",
+                                isRegistered = true
+                            )
+                        )
+                    }
+                }
+            }
+
             // Periodic background sync loop (every 12 seconds) to keep content & subscription status up-to-date securely
             LaunchedEffect(config.isRemoteConfigEnabled, config.remoteConfigUrl, userProfile.email) {
                 if (config.isRemoteConfigEnabled && config.remoteConfigUrl.isNotBlank()) {

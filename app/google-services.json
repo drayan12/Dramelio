@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "485183931990",
+    "project_id": "dramelio-97e32",
+    "storage_bucket": "dramelio-97e32.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:485183931990:android:287a7bd14dd44e5e41ddf7",
+        "android_client_info": {
+          "package_name": "com.aistudio.dramelio.tv"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOTEfXESMGcujNqrIL_0w8i9hJNc7tN2U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

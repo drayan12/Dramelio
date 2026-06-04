@@ -183,9 +183,9 @@ class SettingsManager(context: Context) {
     private fun loadUserProfile(): UserProfile {
         val json = prefs.getString("user_profile", null)
         return if (json != null) {
-            profileAdapter.fromJson(json) ?: UserProfile("", "hendradrayan9@gmail.com", false, null, null, isRegistered = false)
+            profileAdapter.fromJson(json) ?: UserProfile("", "", false, null, null, isRegistered = false)
         } else {
-            UserProfile("", "hendradrayan9@gmail.com", false, null, null, isRegistered = false)
+            UserProfile("", "", false, null, null, isRegistered = false)
         }
     }
 
@@ -269,7 +269,7 @@ class SettingsManager(context: Context) {
     fun resetToDefaults() {
         prefs.edit().clear().apply()
         _backendConfig.value = BackendConfig()
-        _userProfile.value = UserProfile("", "hendradrayan9@gmail.com", false, null, null, isRegistered = false)
+        _userProfile.value = UserProfile("", "", false, null, null, isRegistered = false)
         val initial = getInitialMovies()
         _movies.value = initial
         prefs.edit().putString("movies", movieListAdapter.toJson(initial)).apply()

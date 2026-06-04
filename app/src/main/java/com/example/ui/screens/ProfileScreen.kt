@@ -422,8 +422,32 @@ fun ProfileScreen(
             }
 
             // Developer options resetButton
+            Button(
+                onClick = {
+                    com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
+                    onResetData()
+                    Toast.makeText(context, "Anda telah berhasil keluar dari akun!", Toast.LENGTH_LONG).show()
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = primaryColor
+                ),
+                border = BorderStroke(1.dp, primaryColor.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth().testTag("logout_button")
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("KELUAR DARI AKUN", fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
             TextButton(
                 onClick = {
+                    com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
                     onResetData()
                     Toast.makeText(context, "Simpanan Prefs setelan di-reset!", Toast.LENGTH_SHORT).show()
                 },
