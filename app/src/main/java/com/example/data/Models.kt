@@ -108,8 +108,8 @@ data class BackendConfig(
     val appThemeAccentHex: String = "#FACC15", // Accent Gold default
 
     // Remote Cloud Control API parameters
-    val remoteConfigUrl: String = "",
-    val isRemoteConfigEnabled: Boolean = false,
+    val remoteConfigUrl: String = "https://ais-pre-ivr6fucyp7n3il4qjvwtir-567724750390.asia-southeast1.run.app/panel_admin_php/api.php",
+    val isRemoteConfigEnabled: Boolean = true,
     
     // Remote controlled Announcement Banner
     val announcementTitle: String = "PENGUMUMAN RESMI",

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.*
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -37,12 +38,16 @@ fun ProfileScreen(
     onNavigateBack: () -> Unit,
     onNavigateToCheckout: () -> Unit,
     onResetData: () -> Unit,
+    onSyncConfig: suspend (String) -> Result<BackendConfig>,
     primaryColor: Color
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var isEditing by remember { mutableStateOf(false) }
     var editName by remember { mutableStateOf(userProfile.name) }
     var editEmail by remember { mutableStateOf(userProfile.email) }
+    var remoteUrlInput by remember { mutableStateOf(config.remoteConfigUrl) }
+    var isSyncing by remember { mutableStateOf(false) }
 
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("id", "ID")).apply {
         maximumFractionDigits = 0
@@ -373,6 +378,82 @@ fun ProfileScreen(
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("HUBUNGI ADMIN VIA WHATSAPP", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Akses & Hubungkan API Panel Admin Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+                border = BorderStroke(1.dp, Color.DarkGray),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.SettingsInputComponent, contentDescription = null, tint = primaryColor, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Koneksi Panel Admin PHP", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Ubah URL API sinkronisasi di bawah jika Anda memindahkan folder 'panel_admin_php' ke server hosting Anda sendiri.",
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    OutlinedTextField(
+                        value = remoteUrlInput,
+                        onValueChange = { remoteUrlInput = it },
+                        label = { Text("URL API PHP (api.php)", fontSize = 11.sp) },
+                        placeholder = { Text("https://domain-anda.com/api.php", fontSize = 11.sp) },
+                        textStyle = LocalTextStyle.current.copy(color = Color.White, fontSize = 12.sp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = primaryColor,
+                            unfocusedBorderColor = Color.Gray,
+                            focusedLabelColor = primaryColor,
+                            unfocusedLabelColor = Color.Gray
+                        ),
+                        singleLine = true
+                    )
+                    
+                    Spacer(modifier = Modifier.height(10.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("WhatsApp Aktif Aplikasi:", color = Color.Gray, fontSize = 10.sp)
+                            Text(config.supportUrl, color = primaryColor, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                        
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isSyncing = true
+                                    val res = onSyncConfig(remoteUrlInput)
+                                    isSyncing = false
+                                    if (res.isSuccess) {
+                                        Toast.makeText(context, "Koneksi sukses! Nomor WhatsApp & data film terupdate.", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Sinkronisasi gagal: ${res.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            },
+                            enabled = !isSyncing,
+                            colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            if (isSyncing) {
+                                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text("SINKRONKAN", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                             }
                         }
                     }

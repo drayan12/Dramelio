@@ -45,9 +45,17 @@ fun DetailScreen(
     var isPlayingVideo by remember { mutableStateOf(false) }
     var selectedSeasonIndex by remember { mutableStateOf(0) }
     var activeEpisodeId by remember { mutableStateOf<String?>(null) }
+    var selectedMovieVideoSourceUrl by remember { mutableStateOf<String?>(null) }
     
     val selectedSeason = movie.seasons.getOrNull(selectedSeasonIndex)
     val episodesList = selectedSeason?.episodes ?: emptyList()
+
+    val activeEpisode = episodesList.find { it.id == activeEpisodeId }
+    val videoUrlToPlay = if (movie.isSeries) {
+        activeEpisode?.videoUrl ?: episodesList.firstOrNull()?.videoUrl
+    } else {
+        selectedMovieVideoSourceUrl ?: movie.videoSources.firstOrNull()?.url
+    }
 
     Column(
         modifier = Modifier
@@ -60,6 +68,7 @@ fun DetailScreen(
         if (isPlayingVideo) {
             VideoPlayer(
                 movie = movie,
+                videoUrl = videoUrlToPlay,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(250.dp),
@@ -433,6 +442,7 @@ fun DetailScreen(
                                 .clip(RoundedCornerShape(4.dp))
                                 .border(1.dp, primaryColor.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                                 .clickable {
+                                    selectedMovieVideoSourceUrl = source.url
                                     isPlayingVideo = true
                                     Toast.makeText(context, "Memulai streaming kualitas ${source.label}", Toast.LENGTH_SHORT).show()
                                 }

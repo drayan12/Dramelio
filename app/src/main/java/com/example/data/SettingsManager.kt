@@ -48,17 +48,26 @@ class SettingsManager(context: Context) {
         } else {
             BackendConfig()
         }
+        var finalConfig = loaded
         // Force upgrade to Sophisticated Dark if user is still on old template defaults
         if (loaded.appThemePrimaryHex == "#E50914" || loaded.appThemeBgHex == "#141414") {
-            val migrated = loaded.copy(
+            finalConfig = finalConfig.copy(
                 appThemePrimaryHex = "#EAB308",
                 appThemeBgHex = "#050505",
                 appThemeAccentHex = "#FACC15"
             )
-            prefs.edit().putString("backend_config", configAdapter.toJson(migrated)).apply()
-            return migrated
         }
-        return loaded
+        // Auto-migrate blank remoteConfigUrl to our default live API endpoint
+        if (finalConfig.remoteConfigUrl.isBlank() || finalConfig.remoteConfigUrl.contains("localhost")) {
+            finalConfig = finalConfig.copy(
+                remoteConfigUrl = "https://ais-pre-ivr6fucyp7n3il4qjvwtir-567724750390.asia-southeast1.run.app/panel_admin_php/api.php",
+                isRemoteConfigEnabled = true
+            )
+        }
+        if (finalConfig != loaded) {
+            prefs.edit().putString("backend_config", configAdapter.toJson(finalConfig)).apply()
+        }
+        return finalConfig
     }
 
     fun saveBackendConfig(config: BackendConfig) {

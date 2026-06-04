@@ -253,6 +253,9 @@ class MainActivity : ComponentActivity() {
                                             popUpTo(0) { inclusive = true }
                                         }
                                     },
+                                    onSyncConfig = { url ->
+                                        settingsManager.syncRemoteConfig(url)
+                                    },
                                     primaryColor = primaryColor
                                 )
                             }

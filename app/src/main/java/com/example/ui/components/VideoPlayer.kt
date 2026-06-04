@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,41 +25,118 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.example.data.MovieOrSeries
 import com.example.data.VideoSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(UnstableApi::class)
+@ExperimentalMaterial3Api
 @Composable
 fun VideoPlayer(
     movie: MovieOrSeries,
+    videoUrl: String? = null,
     modifier: Modifier = Modifier,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    var isPlaying by remember { mutableStateOf(true) }
-    var bufferedProgress by remember { mutableStateOf(0.4f) }
-    var currentProgress by remember { mutableStateOf(0.12f) }
-    var totalDurationSeconds by remember { mutableStateOf(5400) } // 1.5 Hour default
-    val currentDurationSeconds = (totalDurationSeconds * currentProgress).toInt()
+    val coroutineScope = rememberCoroutineScope()
 
-    var showControls by remember { mutableStateOf(true) }
-    var isBuffering by remember { mutableStateOf(false) }
-    var scaleMode by remember { mutableStateOf("Fit") } // Fit, Stretch, Zoom
+    // Base video sources from metadata
     val videoSources = movie.videoSources.ifEmpty {
-        listOf(
-            VideoSource("Auto", ""),
-            VideoSource("1080p", ""),
-            VideoSource("720p", ""),
-            VideoSource("480p", ""),
-            VideoSource("360p", "")
-        )
+        listOf(VideoSource("Auto", ""))
     }
-    var selectedQuality by remember { mutableStateOf(videoSources.first().label) }
+
+    // Determine initial URL to load
+    val initialUrl = if (!videoUrl.isNullOrBlank()) {
+        videoUrl
+    } else {
+        videoSources.first().url
+    }
+
+    // Active playback URL state
+    var currentPlayUrl by remember(initialUrl) { mutableStateOf(initialUrl) }
+    var selectedQuality by remember {
+        val matchingLabel = videoSources.find { it.url == initialUrl }?.label
+        mutableStateOf(matchingLabel ?: "Auto")
+    }
+
+    // Initialize ExoPlayer once
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            playWhenReady = true
+        }
+    }
+
+    // Local player state tracked for UI feedback
+    var isPlaying by remember { mutableStateOf(true) }
+    var isBuffering by remember { mutableStateOf(true) }
+    var currentPositionMs by remember { mutableStateOf(0L) }
+    var totalDurationMs by remember { mutableStateOf(0L) }
+    var scaleMode by remember { mutableStateOf("Fit") } // Fit, Stretch, Zoom
+    var showControls by remember { mutableStateOf(true) }
     var showQualitySheet by remember { mutableStateOf(false) }
 
-    val coroutineScope = rememberCoroutineScope()
+    // Synchronize media loading with currentPlayUrl changes
+    LaunchedEffect(currentPlayUrl) {
+        if (!currentPlayUrl.isNullOrBlank()) {
+            val mediaItem = MediaItem.fromUri(currentPlayUrl!!)
+            exoPlayer.setMediaItem(mediaItem)
+            exoPlayer.prepare()
+            exoPlayer.play()
+        } else {
+            Toast.makeText(context, "URL Video belum ditentukan/kosong!", Toast.LENGTH_LONG).show()
+            isBuffering = false
+        }
+    }
+
+    // ExoPlayer event listeners to keep Compose states perfectly in sync
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(playing: Boolean) {
+                isPlaying = playing
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                isBuffering = (state == Player.STATE_BUFFERING)
+                if (state == Player.STATE_READY) {
+                    totalDurationMs = exoPlayer.duration.coerceAtLeast(0L)
+                }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                isBuffering = false
+                isPlaying = false
+                Toast.makeText(
+                    context,
+                    "Kesalahan Pemutaran: ${error.localizedMessage ?: "Format video tidak didukung atau link rusak!"}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose {
+            exoPlayer.removeListener(listener)
+            exoPlayer.release()
+        }
+    }
+
+    // Progress updates tracking timeline loop
+    LaunchedEffect(isPlaying) {
+        while (isPlaying) {
+            currentPositionMs = exoPlayer.currentPosition
+            totalDurationMs = exoPlayer.duration.coerceAtLeast(0L)
+            delay(500)
+        }
+    }
 
     // Auto-hide controls timer
     LaunchedEffect(showControls, isPlaying) {
@@ -68,23 +146,8 @@ fun VideoPlayer(
         }
     }
 
-    // Auto-play / scrubbing simulation logic
-    LaunchedEffect(isPlaying, isBuffering) {
-        while (isPlaying && !isBuffering) {
-            delay(1000)
-            if (currentProgress < 1.0f) {
-                currentProgress += 0.001f
-                if (bufferedProgress < 0.95f && currentProgress > bufferedProgress - 0.1f) {
-                    bufferedProgress += 0.02f
-                }
-            } else {
-                isPlaying = false
-                currentProgress = 0.0f
-            }
-        }
-    }
-
-    fun formatTime(seconds: Int): String {
+    fun formatTime(ms: Long): String {
+        val seconds = (ms / 1000).toInt()
         val h = seconds / 3600
         val m = (seconds % 3600) / 60
         val s = seconds % 60
@@ -95,6 +158,7 @@ fun VideoPlayer(
         }
     }
 
+    // Primary Container Box representing structural boundaries
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -108,56 +172,42 @@ fun VideoPlayer(
                         val sideWidth = size.width / 2
                         if (offset.x < sideWidth) {
                             // Skip backward 10s
-                            val newProgress = (currentProgress - 10f / totalDurationSeconds).coerceAtLeast(0f)
-                            currentProgress = newProgress
-                            Toast.makeText(context, "Mundur 10 detik", Toast.LENGTH_SHORT).show()
+                            val target = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
+                            exoPlayer.seekTo(target)
+                            currentPositionMs = target
+                            Toast.makeText(context, "-10s", Toast.LENGTH_SHORT).show()
                         } else {
                             // Skip forward 10s
-                            val newProgress = (currentProgress + 10f / totalDurationSeconds).coerceAtMost(1f)
-                            currentProgress = newProgress
-                            Toast.makeText(context, "Maju 10 detik", Toast.LENGTH_SHORT).show()
+                            val target = (exoPlayer.currentPosition + 10000L).coerceAtMost(totalDurationMs)
+                            exoPlayer.seekTo(target)
+                            currentPositionMs = target
+                            Toast.makeText(context, "+10s", Toast.LENGTH_SHORT).show()
                         }
                     }
                 )
             },
         contentAlignment = Alignment.Center
     ) {
-        // Video backdrop / simulation background
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFF0F0F0F))
-        ) {
-            // Visual representational styling for scaling
-            val scaleModifier = when (scaleMode) {
-                "Stretch" -> Modifier.fillMaxSize()
-                "Zoom" -> Modifier.fillMaxSize().padding(horizontal = 0.dp, vertical = 0.dp) // Simulated filling entire frame
-                else -> Modifier.aspectRatio(16f / 9f).align(Alignment.Center) // "Fit"
-            }
-            
-            Box(
-                modifier = scaleModifier
-                    .background(Color(0xFF1C1C1C)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MovieFilter,
-                    contentDescription = null,
-                    tint = Color.DarkGray,
-                    modifier = Modifier.size(64.dp)
-                )
-                Text(
-                    text = "Dramelio Player - Simulasi Pemutaran ${movie.title}",
-                    color = Color.Gray,
-                    fontSize = 11.sp,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 12.dp)
-                )
-            }
-        }
+        // Embedded Native ExoPlayer PlayerView
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
+            },
+            update = { playerView ->
+                playerView.resizeMode = when (scaleMode) {
+                    "Stretch" -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                    "Zoom" -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
 
-        // Buffering Circle Spinner
+        // Buffering circular loader
         AnimatedVisibility(
             visible = isBuffering,
             enter = fadeIn(),
@@ -166,7 +216,7 @@ fun VideoPlayer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.6f)),
+                    .background(Color.Black.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -175,14 +225,14 @@ fun VideoPlayer(
                     Text(
                         text = "Menyangga jaringan ($selectedQuality)...",
                         color = Color.White,
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
 
-        // Overlay Controls
+        // Overlay Navigation and Controllers
         AnimatedVisibility(
             visible = showControls,
             enter = fadeIn(),
@@ -193,7 +243,7 @@ fun VideoPlayer(
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.5f))
             ) {
-                // Top Menu Controls Bar
+                // Top control status bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -216,11 +266,13 @@ fun VideoPlayer(
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         maxLines = 1,
-                        modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
                     )
 
-                    Row {
-                        // Scaling mode click feedback
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Aspect Ratio button
                         IconButton(onClick = {
                             scaleMode = when (scaleMode) {
                                 "Fit" -> "Stretch"
@@ -236,27 +288,29 @@ fun VideoPlayer(
                             )
                         }
 
-                        // Quality selection toggle
-                        Button(
-                            onClick = { showQualitySheet = true },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.White.copy(alpha = 0.2f)
-                            ),
-                            shape = RoundedCornerShape(4.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            modifier = Modifier.padding(start = 4.dp)
-                        ) {
-                            Text(
-                                text = selectedQuality,
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                        // Quality dropdown button (Only show if movie has multiple videoSources configured)
+                        if (videoSources.any { !it.url.isNullOrBlank() }) {
+                            Button(
+                                onClick = { showQualitySheet = true },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color.White.copy(alpha = 0.2f)
+                                ),
+                                shape = RoundedCornerShape(4.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.padding(start = 4.dp)
+                            ) {
+                                Text(
+                                    text = selectedQuality,
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
 
-                // Middle controls (Skip backward, Play/Pause, Skip forward)
+                // Middle Action Controls (skip 10s back, play/pause, skip 10s forward)
                 Row(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -266,9 +320,9 @@ fun VideoPlayer(
                 ) {
                     IconButton(
                         onClick = {
-                            val newProgress = (currentProgress - 0.05f).coerceAtLeast(0f)
-                            currentProgress = newProgress
-                            Toast.makeText(context, "-10 Detik", Toast.LENGTH_SHORT).show()
+                            val target = (exoPlayer.currentPosition - 10000L).coerceAtLeast(0L)
+                            exoPlayer.seekTo(target)
+                            currentPositionMs = target
                         }
                     ) {
                         Icon(
@@ -284,7 +338,14 @@ fun VideoPlayer(
                             .size(54.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primary)
-                            .clickable { isPlaying = !isPlaying },
+                            .clickable {
+                                if (isPlaying) {
+                                    exoPlayer.pause()
+                                } else {
+                                    exoPlayer.play()
+                                }
+                                isPlaying = !isPlaying
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -297,9 +358,9 @@ fun VideoPlayer(
 
                     IconButton(
                         onClick = {
-                            val newProgress = (currentProgress + 0.05f).coerceAtMost(1f)
-                            currentProgress = newProgress
-                            Toast.makeText(context, "+10 Detik", Toast.LENGTH_SHORT).show()
+                            val target = (exoPlayer.currentPosition + 10000L).coerceAtMost(totalDurationMs)
+                            exoPlayer.seekTo(target)
+                            currentPositionMs = target
                         }
                     ) {
                         Icon(
@@ -311,7 +372,7 @@ fun VideoPlayer(
                     }
                 }
 
-                // Bottom control elements (Timeline slider, timers)
+                // Bottom Timeline HUD layout
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -324,22 +385,30 @@ fun VideoPlayer(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = formatTime(currentDurationSeconds),
+                            text = formatTime(currentPositionMs),
                             color = Color.LightGray,
                             fontSize = 11.sp
                         )
                         Text(
-                            text = formatTime(totalDurationSeconds),
+                            text = formatTime(totalDurationMs),
                             color = Color.LightGray,
                             fontSize = 11.sp
                         )
                     }
 
-                    // Simulated seekbar showing real elapsed vs buffered progress
+                    // Progress seekbar
+                    val sliderProgress = if (totalDurationMs > 0L) {
+                        (currentPositionMs.toFloat() / totalDurationMs.toFloat()).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+
                     Slider(
-                        value = currentProgress,
-                        onValueChange = {
-                            currentProgress = it
+                        value = sliderProgress,
+                        onValueChange = { percent ->
+                            val targetMs = (percent * totalDurationMs).toLong()
+                            exoPlayer.seekTo(targetMs)
+                            currentPositionMs = targetMs
                         },
                         colors = SliderDefaults.colors(
                             thumbColor = MaterialTheme.colorScheme.primary,
@@ -355,7 +424,7 @@ fun VideoPlayer(
         }
     }
 
-    // Modern Material 3 quality selection bottomsheet
+    // Bottomsheet dropdown choosing quality from config
     if (showQualitySheet) {
         ModalBottomSheet(
             onDismissRequest = { showQualitySheet = false },
@@ -382,16 +451,13 @@ fun VideoPlayer(
                             .clickable {
                                 coroutineScope.launch {
                                     showQualitySheet = false
-                                    isBuffering = true
-                                    delay(1500) // Buffer simulation
-                                    selectedQuality = source.label
-                                    isBuffering = false
-                                    isPlaying = true
-                                    Toast.makeText(
-                                        context,
-                                        "Kualitas diubah ke ${source.label}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    if (!source.url.isNullOrBlank()) {
+                                        currentPlayUrl = source.url
+                                        selectedQuality = source.label
+                                        Toast.makeText(context, "Kualitas: ${source.label}", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Link data untuk kualitas ini kosong!", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
                             .padding(vertical = 14.dp),
@@ -399,7 +465,7 @@ fun VideoPlayer(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (source.label == "Auto") "Auto (Optimal)" else source.label,
+                            text = if (source.label == "Auto") "Auto (Sesuai Link)" else source.label,
                             color = if (selectedQuality == source.label) MaterialTheme.colorScheme.primary else Color.White,
                             fontWeight = if (selectedQuality == source.label) FontWeight.Bold else FontWeight.Normal,
                             fontSize = 14.sp
